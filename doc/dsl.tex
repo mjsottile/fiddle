@@ -1,0 +1,95 @@
+\section{The \FIDDLE DSL}
+
+\FIDDLE defines a domain specific language for expressing finite difference
+equations such as those discussed previously.  This DSL
+is implemented as a set of data types, abstract syntax structures, and operators for
+composing AST structures to form equations and program logic.  The fundamental
+structure is the \emph{expression}.  \FIDDLE is implemented as a domain specific language
+embedded in the host language Haskell, so its definition is based on Haskell algebraic
+data types and operators.
+
+\begin{lstlisting}
+data Expr = Variable    Symbol
+          | FConstant   Float
+          | IConstant   Integer
+          | FunCall     String [Expr]
+          | Multiply    Expr Expr
+          | Divide      Expr Expr
+          | Minus       Expr Expr
+          | Plus        Expr Expr
+          | Square      Expr
+          | Sqrt        Expr
+          | ArrayBound  Array2D ArrayBound2D
+          | BoolTest    Tester Expr Expr
+          | Indexed2D   Array2D Expr Expr
+          deriving (Show, Eq)
+\end{lstlisting}
+
+Expressions are used to define equations in a declarative form.  The spatial fields
+over which they are applied have a corresponding set of data types and AST
+structures.
+
+\begin{lstlisting}
+data Array2D = Array2D Symbol
+  deriving (Show, Eq)
+
+data ArrayBound2D = LowerRows | UpperRows | LowerCols | UpperCols
+  deriving (Show, Eq)
+
+data Indexable2D = Indexable2D Array2D Expr Expr
+  deriving (Show, Eq)
+\end{lstlisting}
+
+Code sequences that bind equations to specific program operations (such as
+assignment to variables) have their own AST representation.
+
+\begin{lstlisting}
+data Statement = 
+    Sequence [SymbolTable -> Statement]
+  | ForRange1 (Expr, Expr, Maybe Expr) [Expr -> Statement]
+  | ForRange2 (Expr, Expr, Maybe Expr) (Expr, Expr, Maybe Expr) [Expr -> Expr -> Statement]
+  | Assign Expr Expr
+  | Conditional Expr Statement Statement
+  | Return Expr
+  | Empty
+\end{lstlisting}
+
+We take advantage of the Haskell host language to override instances of the {\tt Num}
+and {\tt Fractional} type classes to allow basic arithmetic operators to be used for
+construction of the AST.
+
+\begin{lstlisting}
+instance Num Expr where
+  a + b = Plus a b
+  a - b = Minus a b
+  a * b = Multiply a b
+  abs a = fabs a
+  fromInteger a = IConstant a
+  signum a = undefined
+
+instance Fractional Expr where
+  a / b = Divide a b
+  recip a = Divide (FConstant 1) a
+  fromRational a = FConstant (fromRational a)
+\end{lstlisting}
+
+Additional operators are defined to provide syntactic sugar for constructing expressions.  For example, the operator mentioned earlier, {\tt @@} is defined as a specialized
+constructor for the {\tt Indexed2D} instance of the expression data type.  Note that
+while this description limits the extent of the neighborhood to the 3x3 region
+surrounding the central element, extension to arbitrarily large neighborhoods is a
+trivial extension to the code.
+
+\begin{lstlisting}
+(@@) :: Indexable2D -> (Int, Int) -> Expr
+(@@) (Indexable2D a i j) ( 0,  0) = Indexed2D a i j
+(@@) (Indexable2D a i j) ( 0,  1) = Indexed2D a i (j + 1)
+(@@) (Indexable2D a i j) ( 0, -1) = Indexed2D a i (j - 1)
+(@@) (Indexable2D a i j) ( 1,  0) = Indexed2D a (i + 1) j
+(@@) (Indexable2D a i j) ( 1,  1) = Indexed2D a (i + 1) (j + 1)
+(@@) (Indexable2D a i j) ( 1, -1) = Indexed2D a (i + 1) (j - 1)
+(@@) (Indexable2D a i j) (-1,  0) = Indexed2D a (i - 1) j
+(@@) (Indexable2D a i j) (-1,  1) = Indexed2D a (i - 1) (j + 1)
+(@@) (Indexable2D a i j) (-1, -1) = Indexed2D a (i - 1) (j - 1)
+(@@) _ _                        = undefined
+\end{lstlisting}
+

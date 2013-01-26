@@ -1,0 +1,64 @@
+%\documentclass[3p,times]{elsarticle}
+%
+%\usepackage{ecrc}
+%
+%\usepackage{url}
+%\usepackage{listings}
+%
+%\volume{00}
+%\firstpage{1}
+%\journalname{Procedia Computer Science}
+%\runauth{M. Sottile}
+%\jid{Procs}
+%\jnltitlelogo{Procedia Computer Science}
+%
+%\usepackage{amssymb}
+%\usepackage[figuresright]{rotating}
+%\usepackage{mdwlist}
+\documentclass{article}
+\usepackage{fullpage}
+\usepackage{url}
+\usepackage{listings}
+\usepackage{color}
+
+\newcommand{\FIDDLE}{FiDdLe{ }}
+
+\begin{document}
+
+%\begin{frontmatter}
+%\dochead{International Conference on Computational Science, ICCS 2012}
+\title{\FIDDLE: An embedded domain specific language for finite difference problems\\ \emph{Draft technical report}}
+
+\author{Matthew Sottile\\Galois, Inc.\\matt@galois.com}
+\date{}
+%\author{Matthew Sottile\corref{cor1}\fnref{ref2}}
+%\fntext[ref2]{Corresponding author}
+%\cortext[cor1]{\ead {matt@galois.com}}
+%\address{Galois, Inc.}
+
+\lstset{
+  basicstyle=\footnotesize\ttfamily,
+  language=C,
+  breaklines=true,
+  frame=single
+}
+
+\maketitle
+
+%\input{abstract}
+
+%\begin{keyword}
+%blah \sep blah \sep blah
+%\end{keyword}
+%\end{frontmatter}
+
+% \input{intro}
+\input{example}
+\input{dsl}
+
+%\section*{References}
+\bibliographystyle{elsarticle-num}
+\bibliography{fiddle}
+
+\end{document}
+

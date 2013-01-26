@@ -1,0 +1,23 @@
+\begin{abstract}
+This paper describes a simple embedded domain specific language,
+\FIDDLE, implemented in the host language Haskell for describing 2D
+problems based on partial differential equations solved via finite
+difference techniques.  \FIDDLE has two goals: facilitate expression
+of PDE-based problems that will use a finite-difference technique for their
+solution on computers, and allow programmers using the DSL to specify how
+they want their program implemeneted at varying layers of abstraction.
+We accomplish the first goal by allowing the PDEs and corresponding 
+finite difference methods to be expressed in a form as close to their
+mathematical specification as possible.  The second goal is accomplished
+by a sequence of translations that occur within the DSL in which the high
+level mathematical specification is lowered repeatedly to abstract
+representations that get closer and closer to the final target language
+(in this case C).  The programmer is free to work at any of these
+levels if they would prefer to provide expert knowledge beyond that which
+is provided by the built in de-sugaring operations that are provided by
+\FIDDLE.  Making this levelized control available to the programmer is
+critical for allowing performance tuning to take place while still maintaining
+high levels of abstraction for the algorithm specification.  We demonstrate
+this work in the context of a full 2D implementation of the Navier-Stokes
+equations for fluid simulation.
+\end{abstract}

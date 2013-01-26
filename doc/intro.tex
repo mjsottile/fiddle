@@ -1,0 +1,89 @@
+\section{Introduction}
+
+Computational physics is largely an activity focused on translating
+the equations that describe physical phenomena (such as the
+Navier-Stokes equations for fluid flow) into discretized
+representations that can be solved on a computer.  The mathematical
+language most often used for these systems is that of partial
+differential equations (PDEs).  A number of discretization methods
+exist to map this continuum definition of the physics in terms of PDEs
+into a form that can be solved discretely on a computer.  This paper
+describes the design and prototype implementation of an embedded
+domain specific language called \FIDDLE that is intended for the
+expression of PDE-based problems to be solved via finite-difference
+methods.  In this paper we describe the design of \FIDDLE, its
+implementation in the host language Haskell, and its application to
+the solution of the Navier-Stokes equations for basic incompressible
+flow problems.
+
+\subsection{Motivation}
+
+Finite difference, finite volume, and finite elements are the three
+most common approaches, all of which share a common origin: the Taylor
+series expansion of derivatives that represents them as infinite sums
+of difference equations.  Unfortunately, implementation of these PDEs
+using one or more of these methods suffers from two major issues.
+First, the original PDE or system of PDEs is often lost in the
+translation to difference equations based on specific differencing
+schemes (e.g., central differences).  The code that implements the
+PDEs often bears no relation to the original PDEs other than possible
+sharing of variable naming.  Second, the representation of these
+difference schemes is most often based on a tedious and error-prone
+enumeration of explicit array index references.  This explicit array
+indexing makes moving their implementation between concrete
+representations very difficult, and limits the freedom of automated
+code generation and analysis tools from making changes on behalf of
+the user based on knowledge about the high-level system of equations.
+
+The first issue leads to a situation in which the code that implements
+a model based on PDEs no longer resembles the original formulation of
+the physical problem in the mathematical language used to describe the
+physics.  For example, a simple example is the one dimensional
+deriviative $\frac{\partial u}{\partial x}$.  This mathematical
+formulation, implemented in a discrete solver adopting a finite
+difference scheme, may end up ultimately looking like a line of code
+such as:
+
+\begin{verbatim}
+u[x] = (u[x-1]+u[x])/2;
+\end{verbatim}
+
+The concept of the original continuum derivative is lost, and all that
+remains is the finite difference scheme represented as a stencil
+operator on arrays.  More complex derivatives, such as $\frac{\partial
+  uv}{\partial x}$ become much less apparent in their corresponding
+implementation as stenciled arrays.  Furthermore, as arrays are finite
+structures in programming languages, this code is often surrounded by
+code that compensates for boundary conditions - either conditionals or
+restricted ranges over which loops are applied to leave certain
+elements at the boundary of a region static that contain boundary
+condition values.
+
+The second issue that arises is a simple case of the limits of human
+programmers.  Consider a three dimensional problem in which one is
+computing stencils that involve three indices.  A single sign problem
+(typing a {\tt -1} instead of a {\tt +1} in a stencil) can be a very
+insidious problem - it is syntactically correct in terms of the
+language that implements the stencil, and often the only evidence of
+the flaw is incorrect numerical results at the end of the simulation
+(or a single time step).
+
+\FIDDLE seeks to address both of these issues, while keeping as an
+equal priority the ability of the programmer to perform low level
+optimizations to code that practitioners frequently cite as reasons to
+remain in low level languages for coding up their production
+simulations.  We will describe how \FIDDLE addresses these concerns in
+the body of the paper with concrete examples for a 2D Navier-Stokes
+problem.
+
+%\subsection{Related work}
+
+%Languages to define programs of the nature described here have existed
+%for the entire lifetime of the computing sciences to date.  One can
+%argue that the primary purpose (or, at least, use) of Fortran since
+%the 1950s was the numerical solution of systems of partial
+%differential equations.  Numerous languages have emerged since then
+%that address issues of expressivity, parallelism, and performance.
+%This work builds on this body of work.  Cites...
+
+% 

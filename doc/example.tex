@@ -1,0 +1,256 @@
+\section{Motivating example}
+
+Throughout this paper we will use examples from the book ``Numerical
+Simulation in Fluid Dynamics'' by Griebel, Dornseiffer, and
+Neunhoeffer~\cite{griebel98}, and will cite equations from that source
+by the numbering scheme used in that book with the prefix GDN to distinguish
+them from equation references within this paper.  
+
+In the notation we use here, $u$ and $v$ represent the horizontal and
+vertical components of the velocity, $dx$ and $dy$ represent their
+spatial discretization in each dimension and temporal discretization
+(t), $dt$ represents the temporal discretization, and $p$ represents
+the spatially varying pressure (also discretized via $dx$ and $dy$).
+We also have a number of parameters, such as the Reynolds number ($Re$),
+and a donor-cell scheme weight parameter ($\gamma$).
+
+Let us start with one of the equations that must be solved via finite
+difference techniques: the time discretization of the momentum
+equation from the Navier-Stokes equations.  We start with the
+continuum formulation (GDN-2.2a,b):
+
+\begin{eqnarray}
+\frac{\partial u}{\partial t} + \frac{\partial p}{\partial x} & = & \frac{1}{Re} \left(\frac{\partial^2 u}{\partial x^2} + \frac{\partial^2 u}{dy^2}\right) - \frac{\partial(u^2)}{\partial x} - \frac{\partial(uv)}{\partial y} + g_x \nonumber \\
+\frac{\partial v}{\partial t} + \frac{\partial p}{\partial y} & = & \frac{1}{Re} \left(\frac{\partial^2 v}{\partial x^2} + \frac{\partial^2 v}{dy^2}\right) - \frac{\partial(uv)}{\partial x} - \frac{\partial v^2}{\partial y} + g_y
+\end{eqnarray}
+
+These equations represent a component of the basic physics.  
+We will consider the derivatives of the velocity
+components $u$ and $v$ first (we will address pressure term $p$ later).  Using Euler's
+method, the derivative of the velocity components can be discretized
+with respect to time as (GDN-3.28):
+
+\begin{eqnarray}
+\label{eq:uv-time-discretization}
+\left[ \frac{\partial u}{\partial t} \right]^{(n+1)} & = & \frac{u^{(n+1)} - u^{(n)}}{\delta t} \nonumber \\
+\left[ \frac{\partial v}{\partial t} \right]^{(n+1)} & = & \frac{v^{(n+1)} - v^{(n)}}{\delta t}
+\end{eqnarray}
+
+A transformation
+of Eq.~\ref{eq:uv-time-discretization} leads to a very simple
+extension that essentially takes the current value for each state
+variable $u$ and $v$, and adds the appropriate derivative scaled by
+the time step $\delta t$, with the derivative of the pressure moved to
+the right-hand side of the equation via basic algebra (GDN-3.29).
+
+\begin{equation}
+\label{eq:timestep_momentum_u}
+u^{(n+1)} = u^{(n)} + \delta t \left[ \frac{1}{Re} \left(\frac{\partial^2 u}{\partial x^2} + \frac{\partial^2 u}{dy^2}\right) - \frac{\partial(u^2)}{\partial x} - \frac{\partial(uv)}{\partial y} + g_x - \frac{\partial p}{\partial x} \right]
+\end{equation}
+
+\begin{equation}
+\label{eq:timestep_momentum_v}
+v^{(n+1)} = v^{(n)} + \delta t \left[ \frac{1}{Re} \left(\frac{\partial^2 v}{\partial x^2} + \frac{\partial^2 v}{dy^2}\right) - \frac{\partial(uv)}{\partial x} - \frac{\partial(v^2)}{\partial y} + g_y - \frac{\partial p}{\partial y} \right]
+\end{equation}
+
+This leads to a form (GDN-3.36 and GDN-3.37) that represents these
+equations without the pressure terms (which are solved elsewhere), by
+introducing two additional intermediate variables, $F$ and $G$
+(corresponding to the computations for $u$ and $v$ respectively).  We
+will write $F$ and $G$ in terms of their position $(i,j)$ in the two
+dimensional space that we will solve the equations over.
+
+\begin{eqnarray}
+\label{eq:momentum_f}
+F_{i,j} & = & u_{i,j} + \delta t \left[ \frac{1}{Re} \left( \left[ \frac{d^2u}{dx^2} \right]_{i,j} + \left[ \frac{d^2u}{dy^2} \right]_{i,j} \right) - \left[ \frac{d(u^2)}{dx} \right]_{i,j} - \left[ \frac{d(uv)}{dy} \right]_{i,j} + g_x \right] \\
+\label{eq:momentum_g}
+G_{i,j} & = & v_{i,j} + \delta t \left[ \frac{1}{Re} \left( \left[ \frac{d^2v}{dx^2} \right]_{i,j} + \left[ \frac{d^2v}{dy^2} \right]_{i,j} \right) - \left[ \frac{d(uv)}{dx} \right]_{i,j} - \left[ \frac{d(v^2)}{dy} \right]_{i,j} + g_y \right]
+\end{eqnarray}
+
+Finally, we can write the equations for the sequence of $u$ and $v$ values 
+in terms of $F$ and $G$ along with the pressure term:
+
+\begin{eqnarray}
+u^{(n+1)} & = & F - \delta t \frac{\partial p}{\partial x} \nonumber \\
+v^{(n+1)} & = & G - \delta t \frac{\partial p}{\partial y}
+\end{eqnarray}
+
+At this point, we can begin to explore writing these down in code.  Note that
+for the full 2D Navier-Stokes equations, a similar set of equations exist 
+that are not described here.  These are present in the \FIDDLE prototype
+distribution.
+
+\subsection{Mapping equations to code}
+
+Our goal is to allow the programmer to specify how to solve the system of equations
+that describe a physical problem at different levels of abstraction, each of which
+is appropriate for the component of the program that they are specifying.  These
+include:
+
+\begin{enumerate}
+\item The physics based on a composition of differential forms applied to state variables and spatial fields.
+\item Local specifications of finite-difference operators representing the differential forms used in the physical specification.
+\item Application of equations specified for both the physical model and the corresponding finite difference methods in sequences of code.
+\item Abstraction of iterated application of these equations to discretized representations of the space (e.g., regular grids).
+\item Explicit separation of the specification of local differencing methods from their concrete representation on a computer (e.g., dense 2D array).
+\end{enumerate}
+
+Before we continue, some terminology should be clarified.  Consider the
+definition for a 1D finite difference equation:
+
+\begin{equation}
+\left[\frac{du}{dx}\right]_i = \frac{u_i - u_{i-1}}{dx}
+\end{equation}
+
+We say that this is specified in a \emph{local form} because the specification is
+valid for any index $i$.  The references to neighboring portions of the space are
+relative to the \emph{central index} $i$.  This is important as it removes
+any reference to a size of the space and any assumptions about the way that
+space is represented.  It simply states that given an ordering of points (such that
+indices and their neighbors are well defined), this definition of the approximation
+for the derivative can be applied.
+
+In \FIDDLE, we adopt a local view for equation specification.  Instead of writing
+equations in terms of some indices $i, j, k$ and so on, we write them in terms of
+offsets from a central index.  So for example, $(i-1,j+1)$ becomes $(-1,1)$, 
+and $(i,j)$ becomes $(0,0)$.  \FIDDLE provides a special operator, {\tt (@@)}, that
+binds local index offsets to variables that represent spatial fields.  As such,
+$u_{i-1,j}$ is written {\tt u@@(-1,0)}.  The binding of these offsets to concrete
+indices is performed as part of the translation process from the high-level DSL to
+the lower-level intermediate representation and subsequent implementation.
+
+Let's start with the first goal: the specification of the physical model in terms
+of abstract differential forms applied to state variables and spatial fields.
+Given the equations in Eq.~\ref{eq:momentum_f} and Eq.~\ref{eq:momentum_g}, we can write their right-hand sides in code\footnote{The function names, such as {\tt eq336} are based on the equation numbering scheme from the GDN text.} as:
+
+\begin{lstlisting}
+eq336 u v re dx dy dt gx gamma = 
+  u@@(0,0) +
+  (dt * ((1 / re) * ((d2udx2 u dx) + (d2udy2 u dy)) -
+         (du2dx u dx gamma) - (duvdy u v dy gamma) + gx))
+
+eq337 u v re dx dy dt gy gamma =
+  v@@(0,0) +
+  (dt * ((1 / re) * ((d2vdx2 v dx) + (d2vdy2 v dy)) -
+         (duvdx u v dx gamma) - (dv2dy v dy gamma) + gy))
+\end{lstlisting}
+
+Now, these components of the momentum equation are written in terms of derivatives.
+As can be seen in the code for {\tt eq336}, there is a direct correspondence between
+the derivative in the mathematical formula and the code.  This then leads to our
+second goal, the local specification of finite-difference operators that correspond to
+the differential forms used to encode the physical model.  For example, a simple 
+first derivative in the horizontal direction in a 2D space is written:
+
+\begin{equation}
+\left[\frac{du}{dx}\right]_{i,j} = \frac{u_{i,j} - u_{i-1,j}}{dx}
+\end{equation}
+
+This corresponds to the following code:
+
+\begin{lstlisting}
+dudx u dx = (u@@(0,0) - u@@(-1,0)) / dx
+\end{lstlisting}
+
+More interesting examples come about when one encodes, say, a central difference
+scheme combined with a donor cell scheme (please refer to the GDN text for
+details on how this is derived).  Consider the following finite difference
+equation that corresponds to one of the derivatives appearing in the
+momentum equation:
+
+\begin{eqnarray}
+\left[\frac{d(uv)}{dx}\right]_{i,j} & = & \frac{1}{dy} \left( \frac{v_{i,j} + v_{i+1,j}}{2} \frac{u_{i,j} + u_{i,j+1}}{2} - \frac{|v_{i,j-1} + v_{i+1,j-1}|}{2}\frac{u_{i,j-1} + u_{i,j}}{2}\right) + \nonumber \\
+& & \gamma \frac{1}{dy} \left( \frac{|v_{i,j} + v_{i+1,j}|}{2} \frac{u_{i,j} - u_{i,j+1}}{2} - \frac{|v_{i,j-1} + v_{i+1,j-1}|}{2}\frac{u_{i,j-1} - u_{i,j}}{2}\right)
+\end{eqnarray}
+
+In code:
+
+\begin{lstlisting}
+duvdy u v dy gamma = 
+  (1 / dy) * (((v@@(0,0) + v@@(1,0)) / 2) * ((u@@(0,0) + u@@(0,1)) / 2) -
+              ((v@@(0,-1) + v@@(1,-1)) / 2) * ((u@@(0,-1) + u@@(0,0)) / 2))
+  + (gamma / dy) *
+    ( ((abs (v@@(0,0) + v@@(1,0))) / 2) * ((u@@(0,0) - u@@(0,1)) / 2) -
+      ((abs (v@@(0,-1) + v@@(1,-1))) / 2) * ((u@@(0,-1) - u@@(0,0)) / 2))
+\end{lstlisting}
+
+\FIDDLE allows the code specification to have a direct correspondence to the
+mathematical specification.  An interesting consequence of this is that as part
+of our early testing of the DSL, we wrote a pretty-printer that emitted
+\LaTeX{ } code instead of program source code from these equational specifications.
+The result was equivalent to the original mathematical specification, differing
+only in the use of parenthesis in the computer-generated \LaTeX.  This simple
+test led us to the interesting conclusion that an added benefit of this approach
+for program specification is that as part of the documentation generation
+process, the mathematics that are actually implemented in the program can
+be emitted in a form that is human readable to aid in verifying that the program
+matches the physical model specification.
+
+Now, given a set of difference operators and equational definitions, we want to
+compose them together as functions that operate over the data (our third goal).
+The intent here is to bring the high level mathematical specification together with
+a high-level specification of the computational structure of the code.  We still
+avoid committing to low level implementation details (such as parallelism strategies
+or specific loop constructs), but we do commit to a sequence of abstract operations.
+
+\begin{lstlisting}
+comp_FG f g u v re dx dy dt gx gy gamma =
+  Function
+    (TYPrim TYVoid)
+    "comp_fg"
+    [arrName f, arrName g, arrName u, arrName v, re, dx, dy, dt, gx, gy, gamma]
+    (ScopedRegion Nothing
+       [nosyms theloop])
+  where
+    rbounds = (1, ArrayBound f UpperRows, Nothing)
+    cbounds = (1, ArrayBound f UpperCols, Nothing)
+
+    theloop = ForRange2 rbounds cbounds body
+
+    body = [\i j -> (Indexed2D f i j) ===
+                    (eq336 (Indexable2D u i j) (Indexable2D v i j)
+                           vre vdx vdy vdt vgx vgamma),
+            \i j -> (Indexed2D g i j) ===
+                    (eq337 (Indexable2D u i j) (Indexable2D v i j)
+                           vre vdx vdy vdt vgy vgamma)]
+
+    [vre, vdx, vdy, vdt, vgx, vgy, vgamma] = map var [re,dx,dy,dt,gx,gy,gamma]
+\end{lstlisting}
+
+Within this code, we see the fourth goal accomplished: we abstract the manner
+by which iteration occurs via the operator {\tt ForRange2} which, given two
+index ranges, applies the equations bound to concrete variables over the
+index ranges.  The manner by which this iterator is implemented is left to the
+phase in which this specification is transformed to a lower level representation.
+We will explain some of the constructs that have not been described so far in the 
+next section.  It is also important to note that we have also addressed the fifth
+goal of avoiding committing to specific representations yet.  We are writing
+the code only in terms of ``Indexable'' variables and ``Indexed'' representations.
+
+To complete the discussion, we can look at the concrete code that this is translated to
+by the DSL translator.  The code contains the fully expanded physical model equations based on the finite difference operators.  The indexing scheme is mapped to a concrete
+set of indices and nested for-loops.  The array representation is also made concrete
+at translation time, in this case to a structure-based representation modeled on
+Fortran array descriptors.  One consequence of the design of \FIDDLE is that the
+representation of the arrays and array iterators can be changed \emph{without
+modification to the physics and finite difference operator specification}.  This
+demonstrates the intended separation of high-level physical and mathematical
+specification from specific implementation choices.
+
+\begin{lstlisting}
+void 
+comp_fg(FloatArray2D_t * f, FloatArray2D_t * g, FloatArray2D_t * u, 
+        FloatArray2D_t * v, float re, float dx, float dy, float dt, 
+        float gx, float gy, float gamma)
+{
+  for (int i__ = 1; i__ <= f->dimupper[0]; i__++) {
+    for (int j__ = 1; j__ <= f->dimupper[1]; j__++) {
+      f->data[i__][j__] = (u->data[i__][j__]) + ((dt) * ((((((1) / (re)) * (((((u->data[(i__) + (1)][j__]) - ((2) * (u->data[i__][j__]))) + (u->data[(i__) - (1)][j__])) / ((dx) * (dx))) + ((((u->data[i__][(j__) + (1)]) - ((2) * (u->data[i__][j__]))) + (u->data[i__][(j__) - (1)])) / ((dy) * (dy))))) - ((((1) / (dx)) * (((((u->data[i__][j__]) + (u->data[(i__) + (1)][j__])) / (2)) * (((u->data[i__][j__]) + (u->data[(i__) + (1)][j__])) / (2))) - ((((u->data[(i__) - (1)][j__]) + (u->data[i__][j__])) / (2)) * (((u->data[(i__) - (1)][j__]) + (u->data[i__][j__])) / (2))))) + (((gamma) / (dx)) * ((((fabs((u->data[i__][j__]) + (u->data[(i__) + (1)][j__]))) / (2)) * (((u->data[i__][j__]) - (u->data[(i__) + (1)][j__])) / (2))) - (((fabs((u->data[(i__) - (1)][j__]) + (u->data[i__][j__]))) / (2)) * (((u->data[(i__) - (1)][j__]) - (u->data[i__][j__])) / (2))))))) - ((((1) / (dy)) * (((((v->data[i__][j__]) + (v->data[(i__) + (1)][j__])) / (2)) * (((u->data[i__][j__]) + (u->data[i__][(j__) + (1)])) / (2))) - ((((v->data[i__][(j__) - (1)]) + (v->data[(i__) + (1)][(j__) - (1)])) / (2)) * (((u->data[i__][(j__) - (1)]) + (u->data[i__][j__])) / (2))))) + (((gamma) / (dy)) * ((((fabs((v->data[i__][j__]) + (v->data[(i__) + (1)][j__]))) / (2)) * (((u->data[i__][j__]) - (u->data[i__][(j__) + (1)])) / (2))) - (((fabs((v->data[i__][(j__) - (1)]) + (v->data[(i__) + (1)][(j__) - (1)]))) / (2)) * (((u->data[i__][(j__) - (1)]) - (u->data[i__][j__])) / (2))))))) + (gx)));
+                        ;
+      g->data[i__][j__] = (v->data[i__][j__]) + ((dt) * ((((((1) / (re)) * (((((v->data[(i__) + (1)][j__]) - ((2) * (v->data[i__][j__]))) + (v->data[(i__) - (1)][j__])) / ((dx) * (dx))) + ((((v->data[i__][(j__) + (1)]) - ((2) * (v->data[i__][j__]))) + (v->data[i__][(j__) - (1)])) / ((dy) * (dy))))) - ((((1) / (dx)) * (((((u->data[i__][j__]) + (u->data[i__][(j__) + (1)])) / (2)) * (((v->data[i__][j__]) + (v->data[(i__) + (1)][j__])) / (2))) - ((((u->data[(i__) - (1)][j__]) + (u->data[(i__) - (1)][(j__) + (1)])) / (2)) * (((v->data[(i__) - (1)][j__]) + (v->data[i__][j__])) / (2))))) + (((gamma) / (dx)) * ((((fabs((u->data[i__][j__]) + (u->data[i__][(j__) + (1)]))) / (2)) * (((v->data[i__][j__]) - (v->data[(i__) + (1)][j__])) / (2))) - (((fabs((u->data[(i__) - (1)][j__]) + (u->data[(i__) - (1)][(j__) + (1)]))) / (2)) * (((v->data[(i__) - (1)][j__]) - (v->data[i__][j__])) / (2))))))) - ((((1) / (dy)) * (((((v->data[i__][j__]) + (v->data[i__][(j__) + (1)])) / (2)) * (((v->data[i__][j__]) + (v->data[i__][(j__) + (1)])) / (2))) - ((((v->data[i__][(j__) - (1)]) + (v->data[i__][j__])) / (2)) * (((v->data[i__][(j__) - (1)]) + (v->data[i__][j__])) / (2))))) + (((gamma) / (dy)) * ((((fabs((v->data[i__][j__]) + (v->data[i__][(j__) + (1)]))) / (2)) * (((v->data[i__][j__]) - (v->data[i__][(j__) + (1)])) / (2))) - (((fabs((v->data[i__][(j__) - (1)]) + (v->data[i__][j__]))) / (2)) * (((v->data[i__][(j__) - (1)]) - (v->data[i__][j__])) / (2))))))) + (gy)));
+                        ;
+    }
+  }
+        ;
+}
+\end{lstlisting}

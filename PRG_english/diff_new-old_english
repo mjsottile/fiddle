@@ -1,0 +1,148 @@
+9,10c9
+< /* INIT_PARTICLES setzt Partikel zu Beginn des freien Randwertproblems in */
+< /* Fl"ussigkeitsbereich in Abhaengigkeit von problem.                     */
+---
+> /* Initialize particles for free boundary problems to define fluid domain */
+21c20
+<                        /* Initialisierung einiger Parameter */
+---
+>                        /* Initialization of some parameters */
+23c22
+<  if(strcmp(problem, "damm")==0)
+---
+>  if(strcmp(problem, "dam")==0)
+25c24
+<  if(strcmp(problem, "tropfen")==0)
+---
+>  if(strcmp(problem, "drop")==0)
+28,30c27,29
+<     height = 1./2.*jmax*dely;  
+<     rad    = 0.1*jmax*dely;        /* Radius des Tropfens */
+<     mpx    = 0.5*imax*delx;        /* Mittelpunkt des Tropfens */
+---
+>     height = 1./2.*jmax*dely;      /* Height of the basin   */
+>     rad    = 0.1*jmax*dely;        /* Radius of the drop    */
+>     mpx    = 0.5*imax*delx;        /* Mid point of the drop */
+32c31
+<     vstart = -2.0;
+---
+>     vstart = -2.0;                 /* Initial velocity of the drop */
+38c37
+<     printf("kein speicher\n");
+---
+>     printf("no memory");
+41c40
+<  Particlelines -= 1;   /* damit Particlelines[1 bis N] */
+---
+>  Particlelines -= 1;   /* Particlelines from 1 to N */
+49c48
+<                        /* Setzen der Partikel */
+---
+>                        /* Set the particles */
+59c58
+<              if(strcmp(problem, "damm")==0)
+---
+>              if(strcmp(problem, "dam")==0)
+63c62
+<              if(strcmp(problem, "tropfen")==0)
+---
+>              if(strcmp(problem, "drop")==0)
+82c81
+< /* SET_PART  fuegt ein neues Partikel an Stelle (x,y) in Partline */
+---
+> /* Add particle to "Partline" at (x,y)                              */
+88,90c87,89
+<  part =  PARTALLOC(x,y);                     /* neues Partikel kreieren */
+<  part->next = (*Partline).Particles->next;   /* Kette an part anh"angen */
+<  (*Partline).Particles->next = part;    /* part erstes Partikel von Partline */
+---
+>  part =  PARTALLOC(x,y);                     /* create particle       */
+>  part->next = (*Partline).Particles->next;   /* add it to "Partline"  */
+>  (*Partline).Particles->next = part;         /* in the first position */ 
+96,97c95
+< /* MARK_CELLS markiert die Zellen, in denen Partikel liegen und  */
+< /* bestimmt die Zellen am freien Rand                            */
+---
+> /* Mark the cells of the fluid domain                            */
+106,108c104,106
+<                                   /* Alle Zellen "ausleeren" */
+<                                   /* bis auf Hinderniszellen */
+<                                   /*-------------------------*/
+---
+> 
+>  /* set all cells which are not obstacle cells to empty cells */
+>  /*-----------------------------------------------------------*/
+114,116c112,113
+<                                   /* Zellen mit Partikeln neu markieren */
+<                                   /* Schleife "uber Partikel            */
+<                                   /*------------------------------------*/
+---
+>  /* Mark cells containing particles as fluid cells (loop over particles) */
+>  /*----------------------------------------------------------------------*/
+127c124
+<          {                  /* Partikel streichen, falls in Randzelle */
+---
+>          {     /* delete particles in obstacle cells */
+137c134,135
+<                                 /* Markieren der Surface-Zellen */
+---
+>  /* Mark surface cells */
+>  /*--------------------*/
+154c152
+<           if (FLAG[i][j] < 0x0100)    /* keine Oberflaechenzelle */
+---
+>           if (FLAG[i][j] < 0x0100)   
+160c158
+< /*  printf ("\nGeometrie des Gebietes:\n\n");
+---
+> /*  printf ("\nGeometry of the fluid domain:\n\n");
+170,171c168,169
+< 
+< /* SET_UVP_SURFACE Bestimmt die Randwerte am freien Rand   */
+---
+> /*---------------------------------------------------------*/
+> /* Set boundary values at free surface                     */
+178c176
+<  for (j=1;j<=jmax;j++)  /* Erst alle Geschw. zwischen leeren Zellen auf Null */
+---
+>  for (j=1;j<=jmax;j++)  /* Set velocity values in empty cells to zero */
+188,191c186,188
+<     for (i=1;i<=imax;i++)
+<       {
+<                   /* leere Zelle, Hinderniszelle oder innere Fluidzelle */
+<                   /* wird nicht behandelt                               */
+---
+>     for (i=1;i<=imax;i++){
+>       /* treat only surface cells */
+>       /*--------------------------*/
+193,197c190,191
+<          switch (FLAG[i][j] & C_NSWO){   /* Maskierung mit NSWO_E=0x0f00     */
+< 	                              /* filtert genau das Bitfeld fuer die  */
+<                                       /* Oberflaechenzellen heraus,          */
+< 	                              /* dies ermoeglicht die folgenden      */
+<                                       /* case-Abfragen.                      */
+---
+>          switch (FLAG[i][j] & C_NSWO){/* mask NSWO_E=0x0f00    */
+> 	                              /* filters surface cells */
+332c326
+<                         V[i][j-1]   += delt*GY;
+---
+>                         V[i-1][j]   += delt*GY;
+378,379c372,374
+<                         /* Zweiter Durchlauf f"ur Druckrandwerte */
+<                         /*---------------------------------------*/
+---
+> 
+>  /* Second loop for pressure boundary values */
+>  /*------------------------------------------*/
+383,384d377
+<                   /* leere Zelle, Hinderniszelle oder innere Fluidzelle */
+<                   /* wird nicht behandelt                               */
+386,390c379
+<          switch (FLAG[i][j] & C_NSWO){   /* Maskierung mit NSWO_E=0x0f00    */
+< 	                             /* filtert genau das Bitfeld fuer die  */
+<                                      /* Oberflaechenzellen heraus,          */
+< 	                             /* dies ermoeglicht die folgenden      */
+<                                      /* case-Abfragen.                      */
+---
+>          switch (FLAG[i][j] & C_NSWO){  
