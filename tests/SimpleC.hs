@@ -6,16 +6,14 @@ module SimpleC where
 
 import Text.PrettyPrint.HughesPJ
 
-csl :: [Doc] -> Doc
-csl ds = hsep $ punctuate comma ds
-
-ssl :: [Doc] -> Doc
-ssl ds = hsep $ punctuate semi ds
-
+{-
+   DATA TYPES
+-}
 type Symbol = String
 
-pSym :: Symbol -> Doc
-pSym s = text s
+data Function = 
+  FunDecl Symbol CType [(CType, Symbol)] Stmt
+  deriving (Show, Eq)
 
 data ConstExpr =
     SConst String
@@ -23,12 +21,6 @@ data ConstExpr =
   | FConst Float
   | CConst Char
   deriving (Show, Eq)
-
-pConst :: ConstExpr -> Doc
-pConst (SConst s) = doubleQuotes $ text s
-pConst (IConst i) = text $ show i
-pConst (FConst f) = text $ show f
-pConst (CConst c) = quotes $ text [c]
 
 data Expr =
     FunCall Symbol [Expr] -- foo(a,b,c)
@@ -44,6 +36,73 @@ data Expr =
   | Assign AOp Expr Expr  -- a = b
   deriving (Show, Eq)
 
+data BOp = 
+    BPlus | BMinus | BTimes | BDivide  -- + - * /
+  | BAnd | BOr | BXor                  -- && || ^
+  | BRem | BLShift | BRShift           -- % << >>
+  | BGT | BLT | BGE | BLE | BNE | BEQ  -- > < >= <= != ==
+  deriving (Show, Eq)
+
+data AOp =
+    AEqual | APlus | AMinus | ATimes | ADivide   -- = += -= *= /=
+  | AAnd | AOr | AXor | ALShift | ARShift | ARem -- &= |= ^= <<= >>= %=
+  deriving (Show, Eq)
+
+data UOp = UAnd | UStar | UPlus | UMinus | UNot | UBNot
+  deriving (Show, Eq)
+
+data CType =
+    TInt
+  | TFloat
+  | TDouble
+  | TChar
+  | TBool
+  deriving (Show, Eq)
+
+data Label =
+    LDefault
+  | LCase ConstExpr
+  deriving (Show, Eq)
+
+data Stmt =
+    CompoundStmt [Stmt]
+  | DeclSet CType [(Symbol, Expr)]
+  | ExprStmt Expr
+  | IfStmt Expr Stmt (Maybe Stmt)
+  | Switch Expr [(Label, Stmt)]
+  | While Expr Stmt
+  | Do Stmt Expr
+  | For Expr Expr Expr Stmt
+  | Continue
+  | Break
+  | Return Expr
+  deriving (Show, Eq)
+
+
+{-
+   PRETTY PRINTING
+-}
+csl :: [Doc] -> Doc
+csl ds = hsep $ punctuate comma ds
+
+ssl :: [Doc] -> Doc
+ssl ds = hsep $ punctuate semi ds
+
+pSym :: Symbol -> Doc
+pSym s = text s
+
+pFunction :: Function -> Doc
+pFunction (FunDecl n rt args body) =
+  (pType rt)<+>(text n)<>
+  (parens $ csl (map (\(ta,na) -> (pType ta)<+>(text na)) args))<+>
+  (braces $ pStmt body)
+
+pConst :: ConstExpr -> Doc
+pConst (SConst s) = doubleQuotes $ text s
+pConst (IConst i) = text $ show i
+pConst (FConst f) = text $ show f
+pConst (CConst c) = quotes $ text [c]
+
 pExpr :: Expr -> Doc
 pExpr (FunCall fsym args) = (pSym fsym)<>(parens $ csl $ map pExpr args)
 pExpr (VarRef vsym)       = pSym vsym
@@ -56,13 +115,6 @@ pExpr (Index e1 e2)       = (pExpr e1)<>(brackets $ pExpr e2)
 pExpr (BinOp bop e1 e2)   = parens $ (pExpr e1)<>(pBOp bop)<>(pExpr e2)
 pExpr (UnOp uop e)        = parens $ (pUOp uop)<>(pExpr e)
 pExpr (Assign aop e1 e2)  = (pExpr e1)<>(pAOp aop)<>(pExpr e2)
-
-data BOp = 
-    BPlus | BMinus | BTimes | BDivide  -- + - * /
-  | BAnd | BOr | BXor                  -- && || ^
-  | BRem | BLShift | BRShift           -- % << >>
-  | BGT | BLT | BGE | BLE | BNE | BEQ  -- > < >= <= != ==
-  deriving (Show, Eq)
 
 pBOp :: BOp -> Doc
 pBOp op = text $
@@ -83,12 +135,6 @@ pBOp op = text $
       BLE     -> "<="
       BNE     -> "!="
       BEQ     -> "=="
-      --otherwise -> error "Impossible happened in pBOP"
-
-data AOp =
-    AEqual | APlus | AMinus | ATimes | ADivide   -- = += -= *= /=
-  | AAnd | AOr | AXor | ALShift | ARShift | ARem -- &= |= ^= <<= >>= %=
-  deriving (Show, Eq)
 
 pAOp :: AOp -> Doc
 pAOp op = text $
@@ -104,10 +150,6 @@ pAOp op = text $
       ALShift  -> "<<="
       ARShift  -> ">>="
       ARem     -> "%="
-      --otherwise -> error "Impossible happened in pAOp"
-
-data UOp = UAnd | UStar | UPlus | UMinus | UNot | UBNot
-  deriving (Show, Eq)
 
 pUOp :: UOp -> Doc
 pUOp op = text $
@@ -118,24 +160,10 @@ pUOp op = text $
       UMinus -> "-"
       UNot   -> "!"
       UBNot  -> "~"
-      --otherwise -> error "Impossible happened in pUOp"
-
-data Label =
-    LDefault
-  | LCase ConstExpr
-  deriving (Show, Eq)
 
 pLabel :: Label -> Doc
 pLabel LDefault  = text "default:"
 pLabel (LCase c) = (text "case")<+>(pConst c)<>(text ":")
-
-data CType =
-    TInt
-  | TFloat
-  | TDouble
-  | TChar
-  | TBool
-  deriving (Show, Eq)
 
 pType :: CType -> Doc
 pType TInt = text "int"
@@ -143,20 +171,6 @@ pType TFloat = text "float"
 pType TDouble = text "double"
 pType TChar = text "char"
 pType TBool = text "int"
-
-data Stmt =
-    CompoundStmt [Stmt]
-  | DeclSet CType [(Symbol, Expr)]
-  | ExprStmt Expr
-  | IfStmt Expr Stmt (Maybe Stmt)
-  | Switch Expr [(Label, Stmt)]
-  | While Expr Stmt
-  | Do Stmt Expr
-  | For Expr Expr Expr Stmt
-  | Continue
-  | Break
-  | Return Expr
-  deriving (Show, Eq)
 
 pStmt :: Stmt -> Doc
 pStmt (CompoundStmt stmts) = (ssl $ map pStmt stmts) <> semi
