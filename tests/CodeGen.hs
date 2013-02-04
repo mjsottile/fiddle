@@ -2,13 +2,7 @@ import Control.Monad.RWS.Strict
 import qualified Data.Map as Map
 import Debug.Trace
 
--- legal variable type
-data FType = TyFloat | TyInt
-  deriving (Show, Eq)
-
--- variables are name and type
-data Variable = Variable String FType
-  deriving (Show, Eq)
+import SimpleC
 
 -- parameters for the moment are strings
 type Parameters = String
