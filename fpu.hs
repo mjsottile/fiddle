@@ -1,6 +1,8 @@
 --
 -- very simple Fermi-Pasta-Ulam model
 --
+-- see: http://syntacticsalt.com/2012/01/13/simulation-dynamics-and-the-fpu-problem/
+--
 -- matt@galois.com
 --
 
@@ -20,3 +22,4 @@ dt = makeScalarSymbol "dt" TYFloat
 n :: Int
 n = 32
 
+-- and the rest of the code isn't done....
