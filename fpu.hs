@@ -3,7 +3,7 @@
 --
 -- see: http://syntacticsalt.com/2012/01/13/simulation-dynamics-and-the-fpu-problem/
 --
--- matt@galois.com
+-- mjsottile@me.com
 --
 
 import Fiddle.Types

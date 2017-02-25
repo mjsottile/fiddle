@@ -4,7 +4,7 @@ module Fiddle.Fiddle where
 
 FiDdLe: An EDSL for expressing finite difference problems.
 
-Matthew Sottile // matt@galois.com
+Matthew Sottile // mjsottile@gmail.com
 Dec. 2011
 
 -}

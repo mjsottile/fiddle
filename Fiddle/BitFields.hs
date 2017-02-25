@@ -9,7 +9,7 @@ module Fiddle.BitFields where
 -- conditionals to choose the appropriate way to treat a cell in a given
 -- computation.
 --
--- matt@galois.com / jan 2012
+-- mjsottile@gmail.com / jan 2012
 -- 
 
 import Data.Bits

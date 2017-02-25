@@ -10,7 +10,7 @@ import Text.PrettyPrint.HughesPJ
 --
 -- based on equations from book
 --
--- matthew sottile // matt@galois.com
+-- matthew sottile // mjsottile@me.com
 --
 -- ======================================================================
 --
