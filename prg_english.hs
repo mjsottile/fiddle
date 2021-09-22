@@ -277,7 +277,7 @@ eq344 p rhs dx dy omega =
   (1 - omega) * p@@(0,0) + undefined
 
 --
--- derivitaves
+-- derivatives
 --
 
 ddx u dx = (u@@(0,0) - u@@(-1,0)) / dx
